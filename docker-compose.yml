@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: task-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: taskdb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - task-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/taskdb --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: task-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017
+      MONGODB_DATABASE: taskdb
+      JWT_SECRET: your-secret-key-change-in-production
+      AUTO_COMPLETE_MINUTES: 10
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - task-network
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  task-network:
+    driver: bridge
