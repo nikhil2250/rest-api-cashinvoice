@@ -582,8 +582,3 @@ PORT=8081
 # Or stop conflicting service
 lsof -ti:8080 | xargs kill -9
 ```
-
-
-## Author
-
-Task Management API - Golang Assignment Implementation
