@@ -583,9 +583,6 @@ PORT=8081
 lsof -ti:8080 | xargs kill -9
 ```
 
-## License
-
-MIT License
 
 ## Author
 
