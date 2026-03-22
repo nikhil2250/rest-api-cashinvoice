@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/patrickmn/go-cache"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,12 +23,14 @@ const userContextKey contextKey = "user"
 type AuthService struct {
 	userRepo  *repository.UserRepository
 	jwtSecret []byte
+	cache     *cache.Cache
 }
 
-func NewAuthService(userRepo *repository.UserRepository, secret string) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, secret string, cache *cache.Cache) *AuthService {
 	return &AuthService{
 		userRepo:  userRepo,
 		jwtSecret: []byte(secret),
+		cache:     cache,
 	}
 }
 
@@ -62,6 +65,8 @@ func (s *AuthService) Register(ctx context.Context, req *models.RegisterRequest)
 }
 
 func (s *AuthService) Login(ctx context.Context, req *models.LoginRequest) (*models.LoginResponse, error) {
+	// c := cache.New(5*time.Minute, 5*time.Minute)
+
 	// Validate input
 	if req.Email == "" || req.Password == "" {
 		return nil, fmt.Errorf("email and password are required")
@@ -72,11 +77,22 @@ func (s *AuthService) Login(ctx context.Context, req *models.LoginRequest) (*mod
 	if err != nil {
 		return nil, fmt.Errorf("invalid credentials")
 	}
+	attempts, found := s.cache.Get(user.Email)
+	if found && attempts.(int) >= 5 {
+		return nil, fmt.Errorf("too many login attempts, pls try again after sometime")
+	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		if !found {
+			s.cache.Set(user.Email, 1, cache.DefaultExpiration)
+		} else {
+			attempts = attempts.(int) + 1
+			s.cache.Set(user.Email, attempts, cache.DefaultExpiration)
+		}
 		return nil, fmt.Errorf("invalid credentials")
 	}
+	s.cache.Set(user.Email, 0, cache.DefaultExpiration)
 
 	// Generate JWT token
 	token, err := s.generateToken(user)

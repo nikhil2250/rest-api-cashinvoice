@@ -105,6 +105,23 @@ func (s *TaskService) DeleteTask(ctx context.Context, taskID primitive.ObjectID,
 	return s.taskRepo.Delete(ctx, taskID)
 }
 
+func (s *TaskService) UpdateTaskStatus(ctx context.Context, taskID primitive.ObjectID, req *models.UpdateTaskRequest, user *models.User) error {
+	task, err := s.taskRepo.FindByID(ctx, taskID)
+	if err != nil {
+		return err
+	}
+
+	if user.Role != models.UserRoleAdmin && task.UserID != user.ID {
+		return fmt.Errorf("unauthorized to update this task")
+	}
+
+	if err := s.taskRepo.UpdateStatus(ctx, taskID, *req.Status); err != nil {
+		return fmt.Errorf("unable to update the task status: %d", err)
+	}
+
+	return nil
+}
+
 func IsValidStatus(status models.TaskStatus) bool {
 	return status == models.TaskStatusPending || status == models.TaskStatusInProgress || status == models.TaskStatusCompleted
 }

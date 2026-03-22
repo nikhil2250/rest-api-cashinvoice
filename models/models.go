@@ -57,6 +57,12 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type UpdateTaskRequest struct {
+	// Title       *string     `json:"title,omitempty"`
+	// Description *string     `json:"description,omitempty"`
+	Status *TaskStatus `json:"status,omitempty"`
+}
+
 type LoginResponse struct {
 	Token string `json:"token"`
 	User  *User  `json:"user"`

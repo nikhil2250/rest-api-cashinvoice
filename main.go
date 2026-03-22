@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/patrickmn/go-cache"
 )
 
 func main() {
@@ -33,6 +34,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
+
+	cache := cache.New(5*time.Minute, 5*time.Minute)
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -54,7 +57,7 @@ func main() {
 	taskRepo := repository.NewTaskRepository(db)
 
 	// Initialize services
-	authService := service.NewAuthService(userRepo, config.JWTSecret)
+	authService := service.NewAuthService(userRepo, config.JWTSecret, cache)
 	taskService := service.NewTaskService(taskRepo)
 
 	// Initialize handlers
@@ -79,6 +82,7 @@ func main() {
 	api.HandleFunc("", taskHandler.CreateTask).Methods("POST")
 	api.HandleFunc("", taskHandler.ListTasks).Methods("GET")
 	api.HandleFunc("/{id}", taskHandler.GetTask).Methods("GET")
+	api.HandleFunc("/{id}", taskHandler.UpdateTask).Methods("PUT")
 	api.HandleFunc("/{id}", taskHandler.DeleteTask).Methods("DELETE")
 
 	// Start background worker

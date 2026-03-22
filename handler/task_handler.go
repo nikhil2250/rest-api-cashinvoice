@@ -79,6 +79,34 @@ func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 	utils.RespondJSON(w, http.StatusOK, task)
 }
 
+func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
+	user, err := service.GetUserFromContext(r.Context())
+	if err != nil {
+		utils.RespondError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	vars := mux.Vars(r)
+	taskID, err := primitive.ObjectIDFromHex(vars["id"])
+	if err != nil {
+		utils.RespondError(w, http.StatusBadRequest, "invaid task id")
+		return
+	}
+
+	var req models.UpdateTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.taskService.UpdateTaskStatus(r.Context(), taskID, &req, user); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	utils.RespondJSON(w, http.StatusOK, "success")
+}
+
 func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 	user, err := service.GetUserFromContext(r.Context())
 	if err != nil {
